@@ -98,6 +98,8 @@ app.post('/api/checkout', async (req, res) => {
                 transfer_group: `order_${orderId}`,
                 metadata: {
                     orderId: orderId.toString(),
+                    hotelId: hotelId.toString(),
+                    roomId: roomId.toString(),
                     hotelStripeAccountId,
                     restaurantStripeAccountId,
                 }
@@ -171,6 +173,112 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
     }
 
     res.json({ received: true });
+});
+
+/**
+ * 3. Endpoints del Panel de Administración (Gestión de Base de Datos B2B)
+ */
+
+// (1) Hoteles
+app.get('/api/admin/hotels', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM hotels ORDER BY id DESC');
+        res.json(result.rows);
+    } catch (err) { res.status(500).json({ error: 'Error al obtener hoteles' }); }
+});
+
+app.post('/api/admin/hotels', async (req, res) => {
+    try {
+        const { name, address, stripeAccountId } = req.body;
+        const result = await pool.query(
+            'INSERT INTO hotels (name, address, stripe_account_id) VALUES ($1, $2, $3) RETURNING *',
+            [name, address, stripeAccountId || 'acct_default'] // Simplificación MVP
+        );
+        res.json({ success: true, hotel: result.rows[0] });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// (2) Restaurantes
+app.get('/api/admin/restaurants', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM restaurants ORDER BY id DESC');
+        res.json(result.rows);
+    } catch (err) { res.status(500).json({ error: 'Error' }); }
+});
+
+// Obtener restaurantes VINCULADOS a un hotel específico
+app.get('/api/admin/hotels/:hotelId/restaurants', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT r.* FROM restaurants r 
+            JOIN hotel_restaurant_links l ON r.id = l.restaurant_id 
+            WHERE l.hotel_id = $1
+        `, [req.params.hotelId]);
+        res.json(result.rows);
+    } catch (err) { res.status(500).json({ error: 'Error' }); }
+});
+
+// Crear un Restaurante (y guardar su cuenta de Stripe)
+app.post('/api/admin/restaurants', async (req, res) => {
+    try {
+        const { name, stripeAccountId } = req.body;
+        if (!name || !stripeAccountId) return res.status(400).json({ error: 'Faltan datos' });
+
+        const result = await pool.query(
+            'INSERT INTO restaurants (name, stripe_account_id) VALUES ($1, $2) RETURNING id, name',
+            [name, stripeAccountId]
+        );
+        res.json({ success: true, restaurant: result.rows[0] });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Crear un Plato en el Menú de un Restaurante
+app.post('/api/admin/menus', async (req, res) => {
+    try {
+        const { restaurantId, name, description, price, imageUrl } = req.body;
+        if (!restaurantId || !name || !price) return res.status(400).json({ error: 'Faltan datos requeridos' });
+
+        const result = await pool.query(
+            'INSERT INTO menus (restaurant_id, name, description, price, image_url) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+            [restaurantId, name, description, price, imageUrl]
+        );
+        res.json({ success: true, menuId: result.rows[0].id });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error al insertar plato' });
+    }
+});
+
+// Vincular Hotel con Restaurante (B2B Connection)
+app.post('/api/admin/links', async (req, res) => {
+    try {
+        const { hotelId, restaurantId } = req.body;
+        if (!hotelId || !restaurantId) return res.status(400).json({ error: 'Faltan datos' });
+        
+        await pool.query(
+            'INSERT INTO hotel_restaurant_links (hotel_id, restaurant_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [hotelId, restaurantId]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error al crear la relación' });
+    }
+});
+
+// Obtener el Menú completo de un restaurante (Para el Editor Visual)
+app.get('/api/admin/menus/:restaurantId', async (req, res) => {
+    try {
+        const { restaurantId } = req.params;
+        const result = await pool.query('SELECT * FROM menus WHERE restaurant_id = $1 ORDER BY id DESC', [restaurantId]);
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error al cargar menú' });
+    }
 });
 
 const PORT = process.env.PORT || 3001;
