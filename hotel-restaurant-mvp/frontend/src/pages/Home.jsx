@@ -1,13 +1,16 @@
 import { useNavigate } from 'react-router-dom';
-import { QrCode, UtensilsCrossed } from 'lucide-react';
+import { QrCode, UtensilsCrossed, ArrowRight } from 'lucide-react';
+import useQueryConfig from '../hooks/useQueryConfig';
 
 export default function Home() {
   const navigate = useNavigate();
+  const { hotelId, roomId } = useQueryConfig();
 
-  // Simulación: Qué pasaría al escanear el QR físico
-  const handleScanQR = () => {
-    // Escaner detecta URL: app.com/order?h=1&r=402
-    navigate('/order?h=1&r=402');
+  // Si ya tenemos hotelId y roomId grabados, mostramos botón "Entrar al menú"
+  const hasQRCodeData = Boolean(hotelId && roomId);
+
+  const handleEnterMenu = () => {
+    navigate(hasQRCodeData ? `/order?h=${hotelId}&r=${roomId}` : '/order?h=1&r=402');
   };
 
   return (
@@ -25,20 +28,30 @@ export default function Home() {
         Pide comida de los mejores restaurantes locales directamente a tu puerta.
       </p>
 
-      {/* Botón Simulador */}
+      {/* Botón Principal */}
       <button 
-        onClick={handleScanQR}
+        onClick={handleEnterMenu}
         className="group relative w-full max-w-xs flex justify-center py-4 px-4 border border-transparent text-lg font-medium rounded-2xl text-white bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 shadow-lg shadow-rose-200 transition-all active:scale-95"
       >
         <span className="absolute left-0 inset-y-0 flex items-center pl-4">
-          <QrCode className="h-6 w-6 text-rose-100 group-hover:text-white transition-colors" aria-hidden="true" />
+          {hasQRCodeData ? 
+            <ArrowRight className="h-6 w-6 text-rose-100 group-hover:text-white transition-colors" /> : 
+            <QrCode className="h-6 w-6 text-rose-100 group-hover:text-white transition-colors" />
+          }
         </span>
-        Simular Escaneo de QR
+        {hasQRCodeData ? 'Ver Menú de Comida' : 'Simular Escaneo de QR'}
       </button>
 
-      <p className="mt-6 text-sm text-gray-400">
-        Demo: Navegará a Hotel 1, Habitación 402
-      </p>
+      {!hasQRCodeData && (
+        <p className="mt-6 text-sm text-gray-400">
+          Demo: Navegará a Hotel 1, Habitación 402
+        </p>
+      )}
+      {hasQRCodeData && (
+        <div className="mt-6 inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 text-sm font-medium rounded-full border border-green-200">
+            QR Detectado: Hab {roomId} (Hotel {hotelId})
+        </div>
+      )}
     </div>
   );
 }

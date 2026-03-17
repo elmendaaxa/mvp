@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import useQueryConfig from '../hooks/useQueryConfig';
 import { Plus, Minus, ShoppingBag, Loader2 } from 'lucide-react';
 
 // API real del backend (configurada en Vercel via VITE_API_URL o default localhost)
@@ -17,9 +17,7 @@ const MOCK_RESTAURANT = {
 };
 
 export default function Order() {
-  const [searchParams] = useSearchParams();
-  const hotelId = searchParams.get('h');
-  const roomId = searchParams.get('r');
+  const { hotelId, roomId } = useQueryConfig();
 
   const [cart, setCart] = useState([]);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
