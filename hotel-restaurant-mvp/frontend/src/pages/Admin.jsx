@@ -3,6 +3,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { Download, Building2, QrCode, LogOut, Lock, Database, Link as LinkIcon, Layout, Eye, PlusCircle } from 'lucide-react';
 
 export default function Admin() {
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [errorStatus, setErrorStatus] = useState('');
@@ -22,25 +23,25 @@ export default function Admin() {
   // Carga inicial de Hoteles
   const loadHotels = async () => {
       try {
-          const res = await fetch('http://localhost:3001/api/admin/hotels');
+          const res = await fetch(`${API_URL}/api/admin/hotels`);
           if (res.ok) setHotels(await res.json());
       } catch (err) { console.error(err); }
   };
 
   const loadHotelRestaurants = async (hId) => {
       try {
-          const res = await fetch(`http://localhost:3001/api/admin/hotels/${hId}/restaurants`);
+          const res = await fetch(`${API_URL}/api/admin/hotels/${hId}/restaurants`);
           if (res.ok) setHotelRestaurants(await res.json());
           
           // También cargamos todos para el selector de vinculación
-          const resAll = await fetch('http://localhost:3001/api/admin/restaurants');
+          const resAll = await fetch(`${API_URL}/api/admin/restaurants`);
           if (resAll.ok) setAllRestaurants(await resAll.json());
       } catch (err) { console.error(err); }
   };
 
   const loadMenus = async (rId) => {
       try {
-          const res = await fetch(`http://localhost:3001/api/admin/menus/${rId}`);
+          const res = await fetch(`${API_URL}/api/admin/menus/${rId}`);
           if (res.ok) setEditorMenus(await res.json());
       } catch (err) { console.error(err); }
   };
@@ -182,7 +183,7 @@ export default function Admin() {
                   onSubmit={async (e) => {
                       e.preventDefault();
                       try {
-                          await fetch('http://localhost:3001/api/admin/hotels', {
+                          await fetch(`${API_URL}/api/admin/hotels`, {
                               method: 'POST', headers: {'Content-Type': 'application/json'},
                               body: JSON.stringify({ name: e.target.hName.value, address: e.target.hAddr.value })
                           });
@@ -265,7 +266,7 @@ export default function Admin() {
                         onSubmit={async(e) => {
                             e.preventDefault();
                             try {
-                                await fetch('http://localhost:3001/api/admin/links', {
+                                await fetch(`${API_URL}/api/admin/links`, {
                                     method: 'POST', headers: {'Content-Type': 'application/json'},
                                     body: JSON.stringify({ hotelId: selectedHotel.id, restaurantId: e.target.existingRestId.value })
                                 });
@@ -290,14 +291,14 @@ export default function Admin() {
                             e.preventDefault();
                             try {
                                 // 1. Crea el restaurante
-                                const res = await fetch('http://localhost:3001/api/admin/restaurants', {
+                                const res = await fetch(`${API_URL}/api/admin/restaurants`, {
                                     method: 'POST', headers: {'Content-Type': 'application/json'},
                                     body: JSON.stringify({ name: e.target.rName.value, stripeAccountId: e.target.rStripe.value })
                                 });
                                 const data = await res.json();
                                 if(data.success) {
                                     // 2. Lo vincula automáticamente al hotel actual
-                                    await fetch('http://localhost:3001/api/admin/links', {
+                                    await fetch(`${API_URL}/api/admin/links`, {
                                         method: 'POST', headers: {'Content-Type': 'application/json'},
                                         body: JSON.stringify({ hotelId: selectedHotel.id, restaurantId: data.restaurant.id })
                                     });
@@ -335,7 +336,7 @@ export default function Admin() {
                 onSubmit={async (e) => {
                     e.preventDefault();
                     try {
-                        const res = await fetch('http://localhost:3001/api/admin/menus', {
+                        const res = await fetch(`${API_URL}/api/admin/menus`, {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
                             restaurantId: selectedRest.id, 
@@ -372,7 +373,7 @@ export default function Admin() {
                 <div className="bg-white flex-1 rounded-2xl p-4 overflow-y-auto pt-8 flex flex-col">
                     <div className="flex items-center justify-between mb-4 border-b pb-3">
                         <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest"><Eye className="w-4 h-4 text-rose-500"/> App Preview</div>
-                        <div className="text-[10px] bg-gray-100 px-2 py-1 rounded text-gray-500 font-mono">localhost:3001</div>
+                        <div className="text-[10px] bg-gray-100 px-2 py-1 rounded text-gray-500 font-mono">{API_URL.replace('http://', '').replace('https://', '')}</div>
                     </div>
                     
                     <h2 className="text-xl font-bold mb-4 text-gray-900">{selectedRest.name}</h2>
